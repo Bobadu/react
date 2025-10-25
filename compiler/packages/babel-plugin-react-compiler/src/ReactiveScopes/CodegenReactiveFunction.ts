@@ -697,13 +697,20 @@ function codegenReactiveScope(
 
     const name = convertIdentifier(identifier);
     outputComments.push(name.name);
-    if (!cx.hasDeclared(identifier)) {
+    
+    // Check if this variable is both declared and reassigned within the same scope
+    // If so, don't hoist the declaration - it should be inside the memo block
+    const isReassignedInScope = scope.reassignments.has(identifier);
+    
+    if (!cx.hasDeclared(identifier) && !isReassignedInScope) {
       statements.push(
         t.variableDeclaration('let', [t.variableDeclarator(name)]),
       );
     }
     cacheLoads.push({name, index, value: wrapCacheDep(cx, name)});
-    cx.declare(identifier);
+    if (!isReassignedInScope) {
+      cx.declare(identifier);
+    }
   }
   for (const reassignment of scope.reassignments) {
     const index = cx.nextCacheIndex;
